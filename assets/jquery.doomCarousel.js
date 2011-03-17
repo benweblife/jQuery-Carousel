@@ -23,6 +23,7 @@
 					   rightBtn:'a.doom-carousel-right-btn',
 					   itemList:'ul.doom-carousel-list',
 					   itemListCnt: 'div.doom-carousel-cnt',
+					   numItemsToShow:1,
 					   transitionType:'slide',
 					   slideSpeed:'800',
 					   easing:'swing',
@@ -63,6 +64,8 @@
 		this.config.itemWidth = this.config.itemWidth || totalItems.width();
 		this.itemList.width(totalItems.length * this.config.itemWidth);
 
+		this.config.numItemsToShow = this.config.numItemsToShow || this.itemListCnt.width() / this.config.itemWidth;
+
 		if (this.config.showCaption) {
 			this.itemLinks = $('a', self.itemListCnt);
 			this.itemLinks.each(function (index, el) {
@@ -95,7 +98,7 @@
 		
 		to = typeof(to) !== 'string' ? 'right' : to;
 		to = to === 'left' ? '-' : '+';
-		var moveSize = (self.itemList.width() === ($itemListCnt.scrollLeft() + self.config.itemWidth)) ? 0 : self.config.itemWidth;
+		var moveSize = (self.itemList.width() === ($itemListCnt.scrollLeft() + (self.config.itemWidth * self.config.numItemsToShow))) ? 0 : self.config.itemWidth;
 
 		switch (self.config.transitionType) {
 			case 'slide':
