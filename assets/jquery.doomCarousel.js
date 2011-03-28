@@ -23,9 +23,8 @@
 					   rightBtn:'a.doom-carousel-right-btn',
 					   itemList:'ul.doom-carousel-list',
 					   itemListCnt: 'div.doom-carousel-cnt',
-					   numItemsToShow:1,
 					   transitionType:'slide',
-					   slideSpeed:'800',
+					   slideSpeed:800,
 					   easing:'swing',
 					   autoSlide:true,
 					   slideDuration:3000,
@@ -33,7 +32,9 @@
 					   showNav:true,
 					   showCaption:true,
 					   stopOnHover:true,
-					   onLoad:null
+					   onLoad:null,
+					   itemsToShow:1, // Number of items to show (experiment)
+					   hiddenLooping:false // Loop carousel (experiment)
 					  };
 		$.extend(this.config, options);
 
@@ -56,16 +57,21 @@
 			$(this.config.leftBtn, $self).remove();
 			$(this.config.rightBtn, $self).remove();
 		}
-
+		
 		this.itemListCnt = $(this.config.itemListCnt + ':first', $self);
 		this.itemList = $(this.config.itemList + ':first', $self);
-
+		
 		var totalItems = $('li', $self);
 		this.config.itemWidth = this.config.itemWidth || totalItems.width();
-		this.itemList.width(totalItems.length * this.config.itemWidth);
-
 		this.config.numItemsToShow = this.config.numItemsToShow || this.itemListCnt.width() / this.config.itemWidth;
-
+		
+		if (this.config.hiddenLooping) {
+			totalItems.filter(':last').after(totalItems.slice(0, this.config.numItemsToShow).clone().addClass('cloned'));
+			totalItems = $('li', $self);
+		}
+		
+		this.itemList.width(totalItems.length * this.config.itemWidth);
+		
 		if (this.config.showCaption) {
 			this.itemLinks = $('a', self.itemListCnt);
 			this.itemLinks.each(function (index, el) {
@@ -103,7 +109,11 @@
 		switch (self.config.transitionType) {
 			case 'slide':
 				moveSize = moveSize ? to + '=' + moveSize : moveSize;
-				$itemListCnt.animate({'scrollLeft':moveSize}, self.config.slideSpeed, self.config.easing);
+				if (this.config.hiddenLooping && moveSize == 0) {
+					$itemListCnt.scrollLeft(0);
+				} else {
+					$itemListCnt.animate({'scrollLeft':moveSize}, self.config.slideSpeed, self.config.easing);
+				}
 				break;
 			case 'fade':
 				moveSize = moveSize ? $itemListCnt.scrollLeft() + ~~(+ (to + moveSize)) : moveSize;
