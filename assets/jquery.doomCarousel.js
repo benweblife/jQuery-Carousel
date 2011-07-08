@@ -2,10 +2,11 @@
 * Doom Carousel
 *
 * A sliding carousel NOT only for images. :)
+* Also works for multiple carousels on the same page $('.doom-carousel').doomCarousel();
 *
 * @author Dumitru Glavan
 * @link http://dumitruglavan.com
-* @version 1.2
+* @version 1.3
 * @requires jQuery v1.3.2 or later
 *
 * Examples and documentation at: http://dumitruglavan.com/jquery-doom-carousel-plugin/
@@ -19,22 +20,31 @@
 */
 ;(function ($) {
 	$.fn.doomCarousel = function (options) {
+
+		// Check if multiple elements and assign a carousel for everyone
+		if ($(this).length > 1) {
+			$(this).each(function (i, el) {
+				$(el).doomCarousel(options);
+			});
+			return this;
+		}
+
 		this.config = {leftBtn:'a.doom-carousel-left-btn',
 					   rightBtn:'a.doom-carousel-right-btn',
 					   itemList:'ul.doom-carousel-list',
 					   itemListCnt: 'div.doom-carousel-cnt',
+					   itemStepper: 'div.doom-carousel-stepper',
 					   transitionType:'slide',
-					   slideSpeed:800,
+					   slideSpeed:'800',
 					   easing:'swing',
 					   autoSlide:true,
 					   slideDuration:3000,
-					   itemWidth:0, // Deprecated
+					   itemWidth:0,
+					   itemsToScroll:1,
 					   showNav:true,
 					   showCaption:true,
 					   stopOnHover:true,
-					   onLoad:null,
-					   itemsToShow:1, // Number of items to show (experiment)
-					   hiddenLooping:false // Loop carousel (experiment)
+					   onLoad:null
 					  };
 		$.extend(this.config, options);
 
@@ -60,18 +70,12 @@
 		
 		this.itemListCnt = $(this.config.itemListCnt + ':first', $self);
 		this.itemList = $(this.config.itemList + ':first', $self);
-		
-		var totalItems = $('li', $self);
-		this.config.itemWidth = this.config.itemWidth || totalItems.width();
-		this.config.numItemsToShow = this.config.numItemsToShow || this.itemListCnt.width() / this.config.itemWidth;
-		
-		if (this.config.hiddenLooping) {
-			totalItems.filter(':last').after(totalItems.slice(0, this.config.numItemsToShow).clone().addClass('cloned'));
-			totalItems = $('li', $self);
-		}
-		
-		this.itemList.width(totalItems.length * this.config.itemWidth);
-		
+		this.itemStepper = $(this.config.itemStepper + ':first');
+
+		this.totalItems = $('li', $self);
+		this.config.itemWidth = this.config.itemWidth || this.totalItems.width();
+		this.itemList.width(this.totalItems.length * this.config.itemWidth);
+
 		if (this.config.showCaption) {
 			this.itemLinks = $('a', self.itemListCnt);
 			this.itemLinks.each(function (index, el) {
@@ -80,6 +84,13 @@
 				$('<div class="doom-pic-title">' + title + '</div>').appendTo(el);
 			});
 		}
+		
+		// Contruct stepper
+		this.itemStepper.html('<ul />');
+		this.totalItems.each(function () {
+			self.itemStepper.children('ul').append('<li>&nbsp;</li>');
+		});
+		$('ul li:first', this.itemStepper).addClass('on');
 
 		this.itemListCnt.scrollLeft(0);
 
@@ -94,6 +105,12 @@
 				self.setSlideInterval();
 			});
 		}
+		
+		$('li', this.itemStepper).click(function () {
+			var $this = $(this);
+			self.clearSlideInterval();
+			self.jumpToSlide($this.index());
+		});
 
 		return this;
 	},
@@ -101,19 +118,37 @@
 	$.fn.slideCarousel = function (to) {
 		var self = this;
 		var $itemListCnt = self.itemListCnt;
+		var moveSize = (self.itemList.width() === ($itemListCnt.scrollLeft() + self.config.itemWidth * self.config.itemsToScroll)) ? 0 : self.config.itemWidth * self.config.itemsToScroll;
 		
+		self.transition(to, moveSize);
+	},
+	
+	$.fn.jumpToSlide = function (index) {
+		var self = this;
+		var $itemListCnt = self.itemListCnt;
+		var moveSize = (self.itemList.width() === ($itemListCnt.scrollLeft() + self.config.itemWidth * self.config.itemsToScroll)) ? 0 : $itemListCnt.scrollLeft() - self.config.itemWidth * self.config.itemsToScroll * index;
+		var to = moveSize < 0 ? 'right' : 'left';
+		
+		self.transition(to, Math.abs(moveSize));
+		self.setSlideInterval();
+	},
+	
+	$.fn.transition = function (to, moveSize) {
+		var self = this; 
+		var $itemListCnt = self.itemListCnt;
+		var $itemStepper = self.itemStepper;
+
 		to = typeof(to) !== 'string' ? 'right' : to;
 		to = to === 'left' ? '-' : '+';
-		var moveSize = (self.itemList.width() === ($itemListCnt.scrollLeft() + (self.config.itemWidth * self.config.numItemsToShow))) ? 0 : self.config.itemWidth;
 
+		var indexStep = moveSize == 0 ? 0 : ($itemListCnt.scrollLeft() + (to == '-' ? -moveSize : +moveSize)) / self.totalItems.width();
+		$('ul li', $itemStepper).removeClass();
+		$('ul li:eq('+indexStep+')', $itemStepper).addClass('on');
+		
 		switch (self.config.transitionType) {
 			case 'slide':
 				moveSize = moveSize ? to + '=' + moveSize : moveSize;
-				if (this.config.hiddenLooping && moveSize == 0) {
-					$itemListCnt.scrollLeft(0);
-				} else {
-					$itemListCnt.animate({'scrollLeft':moveSize}, self.config.slideSpeed, self.config.easing);
-				}
+				$itemListCnt.animate({'scrollLeft':moveSize}, self.config.slideSpeed, self.config.easing);
 				break;
 			case 'fade':
 				moveSize = moveSize ? $itemListCnt.scrollLeft() + ~~(+ (to + moveSize)) : moveSize;
